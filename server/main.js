@@ -1,43 +1,50 @@
-var express = require('express');
-var app = express();
-var mongodb = require('./mongodb_connect');
-var bodyParser = require('body-parser');
+var fs = require('fs');
 
-mongodb.connect().then(function (data) {
-    console.log(data);
-}).catch(console.error)
+/**
+* @constructor : method to create log folder
+``@param : path : where to create folder
+*/
+function createLogFolder(path) {
+    try {
+        fs.mkdirSync(path);
+    } catch (e) {
+    }
+}
+require('./config/index.js');
+// Create info folder
+createLogFolder(serverConfig.LOGPATH + "info/");
+// Create debug folder
+createLogFolder(serverConfig.LOGPATH + "debug/");
+// Create error folder
+createLogFolder(serverConfig.LOGPATH + "error/");
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+var log = require('./logger/logger.js');
+// Initialize the corresponding database type
+var database = require('./controller/mongodb_connect');
+// Connect mongoDB
+database.connectDatabase().then(function (response) {
+    log.info("Connected to " + serverConfig.DBTYPE + " database");
+    var server = require("./controller/server.js");
+}).catch(function (err) {
+    log.error("Error");
+    log.error(err.stack);
+});
 
-app.get('/', function (req, res) {
-    res.send('Hello World');
-})
+// Solve when app is closing
+process.on('exit', function exitServer(code) {
+    log.info(`About to exit with code: ${code}`);
+    database.closeDB();
+});
 
-app.post('/CheckUser', function (req, res) {
-    var username = req.body.username;
-    var password = req.body.password;
-    mongodb.checkUser(username, password).then(function (data) {
-        res.send(data);
-    }).catch(function (data) {
-        res.send(data);
-    })
-})
+// Catches ctrl+c event
+process.on('SIGINT', function sigint() {
+    log.info(`close server with ctrl+c `);
+    process.exit();
+});
 
-app.post('/RegisterUser', function (req, res) {
-    var username = req.body.username;
-    var password = req.body.password;
-    var email = req.body.email;
-    mongodb.insertUser(username, password , email).then(function (data) {
-        res.send(data);
-    }).catch(function (data) {
-        res.send(data);
-    })
-})
-
-var server = app.listen(8000, function () {
-    var host = server.address().address
-    var port = server.address().port
-
-    console.log("Example app listening at http://%s:%s", host, port)
+// Catches uncaught exceptions
+process.on('uncaughtException', function (err) {
+    log.error(err.stack);
+    database.closeDB();
+    process.exit();
 })

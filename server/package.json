@@ -4,7 +4,11 @@
   "description": "",
   "main": "main.js",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "bunyan": "^1.8.12",
+    "bunyan-format": "^0.2.1",
     "express": "^4.16.2",
+    "jsonwebtoken": "^8.1.0",
     "mongoose": "^5.0.0-rc0"
   },
   "devDependencies": {},
